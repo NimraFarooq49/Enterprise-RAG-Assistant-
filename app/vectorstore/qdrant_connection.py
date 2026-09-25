@@ -1,16 +1,27 @@
 from uuid import uuid4
-
+import os
+from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct
 
-QDRANT_HOST = "localhost"
-QDRANT_PORT = 6333
+load_dotenv()
+
+# QDRANT_HOST = "localhost"
+# QDRANT_PORT = 6333
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+
 COLLECTION_NAME = "documents"
 
 
+# client = QdrantClient(
+#     host=QDRANT_HOST,
+#     port=QDRANT_PORT,
+# )
+
 client = QdrantClient(
-    host=QDRANT_HOST,
-    port=QDRANT_PORT,
+    url=QDRANT_URL,
+    api_key=QDRANT_API_KEY,
 )
 
 
@@ -35,6 +46,7 @@ def create_collection():
 
 
 def store_chunks(chunks):
+    create_collection()
     points = []
 
     for chunk in chunks:

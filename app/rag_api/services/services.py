@@ -1,7 +1,9 @@
 import os
 import json
 import re
-import ollama
+
+# import ollama
+import requests
 from fastapi import UploadFile, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -196,6 +198,9 @@ def upload_documents(files: list[UploadFile]):
         )
 
     except Exception:
+        import traceback
+
+        traceback.print_exc()
 
         db.rollback()
 
@@ -347,6 +352,11 @@ def delete_document(document_id: int):
         )
 
     except Exception:
+        # except Exception as e:
+        #     import traceback
+
+        #     traceback.print_exc()
+
         db.rollback()
 
         raise HTTPException(
@@ -824,24 +834,50 @@ USER QUESTION:
 """
 
     # 8. Generate answer
-    response = ollama.chat(
-        model="llama3.2:3b",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt,
-            }
-        ],
-        format="json",
-        options={
-            "temperature": 0,
-            "num_ctx": 8192,
-            "num_predict": 1200,
-        },
+    #   response = ollama.chat(
+    #       model="llama3.2:3b",
+    #       messages=[
+    #           {
+    #               "role": "user",
+    #               "content": prompt,
+    #           }
+    #        ],
+    #       format="json",
+    #       options={
+    #           "temperature": 0,
+    #           "num_ctx": 8192,
+    #           "num_predict": 1200,
+    #       },
+    #   )
+
+    # raw_answer = response.get("message", {}).get("content", "").strip()
+    headers = {
+        "Authorization": f"Bearer {os.getenv('GROQ_API_KEY')}",
+        "Content-Type": "application/json",
+    }
+
+    data = {
+        "model": "openai/gpt-oss-120b",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0,
+    }
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers=headers,
+        json=data,
+        timeout=120,
     )
 
-    raw_answer = response.get("message", {}).get("content", "").strip()
+    response.raise_for_status()
 
+    result = response.json()
+
+    raw_answer = (
+        result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    )
+
+    # return raw_answer
     # print(
     # "[CHAT] Raw LLM answer:",
     # raw_answer,
