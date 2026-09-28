@@ -303,12 +303,7 @@ def delete_document(document_id: int):
             db.query(Document).filter(Document.document_id == document_id).first()
         )
 
-        if not document:
-            raise HTTPException(
-                status_code=404,
-                detail="Document not found",
-            )
-
+        # Delete all related vectors from Qdrant
         client.delete(
             collection_name=COLLECTION_NAME,
             points_selector=Filter(
@@ -322,43 +317,41 @@ def delete_document(document_id: int):
             wait=True,
         )
 
-        file_path = os.path.join(
-            UPLOAD_FOLDER,
-            document.file_name,
-        )
+        # If document exists in SQLite, delete uploaded file and database record
+        if document:
+            file_path = os.path.join(
+                UPLOAD_FOLDER,
+                document.file_name,
+            )
 
-        if os.path.exists(file_path):
-            os.remove(file_path)
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
-        db.delete(document)
-        db.commit()
+            db.delete(document)
+            db.commit()
 
+            return Response(
+                status_code=200,
+                message="Document and all related data deleted successfully",
+                data=None,
+            )
+
+        # Document was not in SQLite, but Qdrant deletion was performed
         return Response(
             status_code=200,
-            message="Document and all related data deleted successfully",
+            message="Document vectors deleted from Qdrant. No SQLite record was found.",
             data=None,
         )
 
-    except HTTPException:
-        db.rollback()
-        raise
-
     except SQLAlchemyError:
         db.rollback()
-
         raise HTTPException(
             status_code=500,
             detail="Database error while deleting document",
         )
 
     except Exception:
-        # except Exception as e:
-        #     import traceback
-
-        #     traceback.print_exc()
-
         db.rollback()
-
         raise HTTPException(
             status_code=500,
             detail="Failed to delete document and related data",
