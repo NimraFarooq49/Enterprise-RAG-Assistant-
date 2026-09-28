@@ -303,7 +303,7 @@ def delete_document(document_id: int):
             db.query(Document).filter(Document.document_id == document_id).first()
         )
 
-        # Delete all related vectors from Qdrant
+        # Delete all related vectors/chunks from Qdrant
         client.delete(
             collection_name=COLLECTION_NAME,
             points_selector=Filter(
@@ -317,7 +317,7 @@ def delete_document(document_id: int):
             wait=True,
         )
 
-        # If document exists in SQLite, delete uploaded file and database record
+        # Delete uploaded file and SQLite record
         if document:
             file_path = os.path.join(
                 UPLOAD_FOLDER,
@@ -332,14 +332,14 @@ def delete_document(document_id: int):
 
             return Response(
                 status_code=200,
-                message="Document and all related data deleted successfully",
+                message="Document deleted from Qdrant, database, and documents folder successfully",
                 data=None,
             )
 
-        # Document was not in SQLite, but Qdrant deletion was performed
+        # Qdrant data was deleted, but SQLite record was missing
         return Response(
             status_code=200,
-            message="Document vectors deleted from Qdrant. No SQLite record was found.",
+            message="Document data deleted from Qdrant. No SQLite record was found.",
             data=None,
         )
 
